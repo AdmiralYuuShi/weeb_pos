@@ -16,7 +16,7 @@ dependencies:
   go_router: ^10.1.2
   image_picker: ^1.0.4
   equatable: ^2.0.5
-  data_table_2: ^2.3.8 
+  data_table_2: ^2.5.8
   cloud_firestore: ^4.0.5
   firebase_auth: ^4.1.2
   firebase_core: ^2.2.0

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -22,6 +23,9 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
     on<MenuEvent>(_onEvent);
   }
 
+  StreamSubscription? _groupMenuStreamSubscription;
+  StreamSubscription? _menuItemStreamSubscription;
+
   Future<void> _onEvent(MenuEvent event, Emitter<MenuState> emit) async {
     await event.when(
       getGroupMenus: () async {
@@ -29,32 +33,26 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
           getGroupMenus: const OperationLoadingState(loadingState: LoadingState.loading),
         ));
 
-        final fetch = await _menuRepository.getGroupMenus();
+        final stream = await _menuRepository.streamGroupMenus();
 
-        fetch.fold(
-          (left) {
+        await stream.fold(
+          (failure) async {
             emit(state.copyWith(
-              getGroupMenus: const OperationLoadingState(
-                loadingState: LoadingState.error,
-                errMessage: 'Something Wrongs',
-              ),
-            ));
-
-            emit(state.copyWith(
-              getGroupMenus: const OperationLoadingState(loadingState: LoadingState.init),
-            ));
+                getGroupMenus: const OperationLoadingState<List<GroupMenu>>(
+              loadingState: LoadingState.error,
+              errMessage: 'Server Failure',
+            )));
           },
-          (right) {
-            emit(state.copyWith(
-              getGroupMenus: OperationLoadingState(
-                data: right,
-                loadingState: LoadingState.success,
-              ),
-            ));
+          (result) async {
+            _groupMenuStreamSubscription?.cancel();
+            _groupMenuStreamSubscription = result.listen((gm) {
+              add(MenuEvent.getGroupMenusUpdated(gm));
+            });
           },
         );
       },
       getGroupMenusUpdated: (groupMenus) {
+        debugPrint('${groupMenus.map((e) => e.name).toList()}');
         emit(state.copyWith(
           getGroupMenus: OperationLoadingState(
             data: groupMenus,
@@ -67,28 +65,21 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
           getMenuItems: const OperationLoadingState(loadingState: LoadingState.loading),
         ));
 
-        final fetch = await _menuRepository.getMenuItems();
+        final stream = await _menuRepository.streamMenuItems();
 
-        fetch.fold(
-          (left) {
+        await stream.fold(
+          (failure) async {
             emit(state.copyWith(
-              getMenuItems: const OperationLoadingState(
-                loadingState: LoadingState.error,
-                errMessage: 'Something Wrongs',
-              ),
-            ));
-
-            emit(state.copyWith(
-              getMenuItems: const OperationLoadingState(loadingState: LoadingState.init),
-            ));
+                getMenuItems: const OperationLoadingState<List<MenuItem>>(
+              loadingState: LoadingState.error,
+              errMessage: 'Server Failure',
+            )));
           },
-          (right) {
-            emit(state.copyWith(
-              getMenuItems: OperationLoadingState(
-                data: right,
-                loadingState: LoadingState.success,
-              ),
-            ));
+          (result) async {
+            _menuItemStreamSubscription?.cancel();
+            _menuItemStreamSubscription = result.listen((menuItems) {
+              add(MenuEvent.getMenuItemsUpdated(menuItems));
+            });
           },
         );
       },
